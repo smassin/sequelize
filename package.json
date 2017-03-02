@@ -40,9 +40,9 @@
     "cls-bluebird": "^2.0.1",
     "debug": "^2.3.0",
     "depd": "^1.1.0",
-    "dottie": "^1.0.0",
+    "dottie": "^2.0.0",
     "env-cmd": "^4.0.0",
-    "generic-pool": "^2.4.4",
+    "generic-pool": "^3.1.6",
     "inflection": "1.10.0",
     "lodash": "^4.17.1",
     "moment": "^2.13.0",
@@ -52,7 +52,7 @@
     "terraformer-wkt-parser": "^1.1.2",
     "toposort-class": "^1.0.1",
     "uuid": "^3.0.0",
-    "validator": "^6.2.0",
+    "validator": "^6.3.0",
     "wkx": "^0.4.1"
   },
   "devDependencies": {
@@ -71,7 +71,7 @@
     "jshint": "^2.9.3",
     "lcov-result-merger": "^1.2.0",
     "mocha": "^3.0.2",
-    "mysql2": "^1.1.0",
+    "mysql2": "^1.2.0",
     "pg": "^6.1.0",
     "pg-hstore": "^2.3.2",
     "pg-native": "^1.8.0",
@@ -135,7 +135,7 @@
     "sscce-sqlite": "cross-env DIALECT=sqlite npm run sscce"
   },
   "engines": {
-    "node": ">=0.6.21"
+    "node": ">=4.0.0"
   },
   "license": "MIT"
 }

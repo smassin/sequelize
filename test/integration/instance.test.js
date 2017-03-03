@@ -10,7 +10,7 @@ var chai = require('chai')
   , dialect = Support.getTestDialect()
   , config = require(__dirname + '/../config/config')
   , sinon = require('sinon')
-  , uuid = require('node-uuid')
+  , validateUUID = require('uuid-validate')
   , current = Support.sequelize;
 
 describe(Support.getTestDialectTeaser('Instance'), function() {
@@ -705,8 +705,8 @@ describe(Support.getTestDialectTeaser('Instance'), function() {
 
       it('should store a valid uuid in uuidv1 and uuidv4 that can be parsed to something of length 16', function() {
         var user = this.User.build({ username: 'a user'});
-        expect(uuid.parse(user.uuidv1)).to.have.length(16);
-        expect(uuid.parse(user.uuidv4)).to.have.length(16);
+        expect(validateUUID(user.uuidv1, 1)).to.be.true;
+        expect(validateUUID(user.uuidv4, 4)).to.be.true;
       });
 
       it('should store a valid uuid if the field is a primary key named id', function() {
@@ -1210,6 +1210,25 @@ describe(Support.getTestDialectTeaser('Instance'), function() {
                 expect(newlySavedUser.updatedAt).to.equalTime(updatedAt);
               });
             });
+          });
+        });
+      });
+
+      it('should not throw ER_EMPTY_QUERY if changed only virtual fields', function() {
+        var User = this.sequelize.define('User' + config.rand(), {
+          name: DataTypes.STRING,
+          bio: {
+            type: DataTypes.VIRTUAL,
+            get: function() {
+              return 'swag';
+            }
+          }
+        }, {
+          timestamps: false
+        });
+        return User.sync({force: true}).then(function() {
+          return User.create({ name: 'John', bio: 'swag 1' }).then(function(user) {
+            return user.update({ bio: 'swag 2' }).should.be.fulfilled;
           });
         });
       });

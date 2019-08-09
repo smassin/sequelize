@@ -1,20 +1,18 @@
 'use strict';
 
-/* jshint -W030 */
-/* jshint -W079 */
-/* jshint -W110 */
-const chai = require('chai')
-  , expect = chai.expect
-  , Support = require(__dirname + '/../../support')
-  , Sequelize = Support.Sequelize
-  , Promise = Sequelize.Promise
-  , dialect = Support.getTestDialect()
-  , DataTypes = require(__dirname + '/../../../../lib/data-types')
-  , sequelize = require(__dirname + '/../../../../lib/sequelize');
+const chai = require('chai'),
+  expect = chai.expect,
+  Support = require('../../support'),
+  Sequelize = Support.Sequelize,
+  Op = Sequelize.Op,
+  Promise = Sequelize.Promise,
+  dialect = Support.getTestDialect(),
+  DataTypes = require('../../../../lib/data-types'),
+  sequelize = require('../../../../lib/sequelize');
 
 if (dialect.match(/^postgres/)) {
-  describe('[POSTGRES Specific] DAO', function () {
-    beforeEach(function () {
+  describe('[POSTGRES Specific] DAO', () => {
+    beforeEach(function() {
       this.sequelize.options.quoteIdentifiers = true;
       this.User = this.sequelize.define('User', {
         username: DataTypes.STRING,
@@ -41,23 +39,23 @@ if (dialect.match(/^postgres/)) {
       return this.User.sync({ force: true });
     });
 
-    afterEach(function () {
+    afterEach(function() {
       this.sequelize.options.quoteIdentifiers = true;
     });
 
-    it('should be able to search within an array', function () {
+    it('should be able to search within an array', function() {
       return this.User.findAll({
         where: {
           email: ['hello', 'world']
         },
         attributes: ['id', 'username', 'email', 'settings', 'document', 'phones', 'emergency_contact', 'friends'],
-        logging: function (sql) {
+        logging(sql) {
           expect(sql).to.equal('Executing (default): SELECT "id", "username", "email", "settings", "document", "phones", "emergency_contact", "friends" FROM "Users" AS "User" WHERE "User"."email" = ARRAY[\'hello\',\'world\']::TEXT[];');
         }
       });
     });
 
-    it('should be able to update a field with type ARRAY(JSON)', function () {
+    it('should be able to update a field with type ARRAY(JSON)', function() {
       return this.User.create({
         username: 'bob',
         email: ['myemail@email.com'],
@@ -80,7 +78,7 @@ if (dialect.match(/^postgres/)) {
         });
     });
 
-    it('should be able to find a record while searching in an array', function () {
+    it('should be able to find a record while searching in an array', function() {
       return this.User.bulkCreate([
         { username: 'bob', email: ['myemail@email.com'] },
         { username: 'tony', email: ['wrongemail@email.com'] }
@@ -93,25 +91,25 @@ if (dialect.match(/^postgres/)) {
       });
     });
 
-    describe('json', function () {
-      it('should be able to retrieve a row with ->> operator', function () {
-        return this.sequelize.Promise.all([
+    describe('json', () => {
+      it('should be able to retrieve a row with ->> operator', function() {
+        return Sequelize.Promise.all([
           this.User.create({ username: 'swen', emergency_contact: { name: 'kate' } }),
           this.User.create({ username: 'anna', emergency_contact: { name: 'joe' } })])
           .then(() => {
-            return this.User.find({ where: sequelize.json("emergency_contact->>'name'", 'kate'), attributes: ['username', 'emergency_contact'] });
+            return this.User.findOne({ where: sequelize.json("emergency_contact->>'name'", 'kate'), attributes: ['username', 'emergency_contact'] });
           })
           .then(user => {
             expect(user.emergency_contact.name).to.equal('kate');
           });
       });
 
-      it('should be able to query using the nested query language', function () {
-        return this.sequelize.Promise.all([
+      it('should be able to query using the nested query language', function() {
+        return Sequelize.Promise.all([
           this.User.create({ username: 'swen', emergency_contact: { name: 'kate' } }),
           this.User.create({ username: 'anna', emergency_contact: { name: 'joe' } })])
           .then(() => {
-            return this.User.find({
+            return this.User.findOne({
               where: sequelize.json({ emergency_contact: { name: 'kate' } })
             });
           })
@@ -120,63 +118,63 @@ if (dialect.match(/^postgres/)) {
           });
       });
 
-      it('should be able to query using dot syntax', function () {
-        return this.sequelize.Promise.all([
+      it('should be able to query using dot syntax', function() {
+        return Sequelize.Promise.all([
           this.User.create({ username: 'swen', emergency_contact: { name: 'kate' } }),
           this.User.create({ username: 'anna', emergency_contact: { name: 'joe' } })])
           .then(() => {
-            return this.User.find({ where: sequelize.json('emergency_contact.name', 'joe') });
+            return this.User.findOne({ where: sequelize.json('emergency_contact.name', 'joe') });
           })
           .then(user => {
             expect(user.emergency_contact.name).to.equal('joe');
           });
       });
 
-      it('should be able to query using dot syntax with uppercase name', function () {
-        return this.sequelize.Promise.all([
+      it('should be able to query using dot syntax with uppercase name', function() {
+        return Sequelize.Promise.all([
           this.User.create({ username: 'swen', emergencyContact: { name: 'kate' } }),
           this.User.create({ username: 'anna', emergencyContact: { name: 'joe' } })])
           .then(() => {
-            return this.User.find({
+            return this.User.findOne({
               attributes: [[sequelize.json('emergencyContact.name'), 'contactName']],
               where: sequelize.json('emergencyContact.name', 'joe')
             });
           })
           .then(user => {
-            expect(user.get("contactName")).to.equal('joe');
+            expect(user.get('contactName')).to.equal('joe');
           });
       });
 
-      it('should be able to store values that require JSON escaping', function () {
+      it('should be able to store values that require JSON escaping', function() {
         const text = "Multi-line '$string' needing \"escaping\" for $$ and $1 type values";
-        
+
         return this.User.create({ username: 'swen', emergency_contact: { value: text } })
           .then(user => {
             expect(user.isNewRecord).to.equal(false);
           })
           .then(() => {
-            return this.User.find({ where: { username: 'swen' } });
+            return this.User.findOne({ where: { username: 'swen' } });
           })
           .then(() => {
-            return this.User.find({ where: sequelize.json('emergency_contact.value', text) });
+            return this.User.findOne({ where: sequelize.json('emergency_contact.value', text) });
           })
           .then(user => {
             expect(user.username).to.equal('swen');
           });
       });
 
-      it('should be able to findOrCreate with values that require JSON escaping', function () {
+      it('should be able to findOrCreate with values that require JSON escaping', function() {
         const text = "Multi-line '$string' needing \"escaping\" for $$ and $1 type values";
-        
+
         return this.User.findOrCreate({ where: { username: 'swen' }, defaults: { emergency_contact: { value: text } } })
           .then(user => {
             expect(!user.isNewRecord).to.equal(true);
           })
           .then(() => {
-            return this.User.find({ where: { username: 'swen' } });
+            return this.User.findOne({ where: { username: 'swen' } });
           })
           .then(() => {
-            return this.User.find({ where: sequelize.json('emergency_contact.value', text) });
+            return this.User.findOne({ where: sequelize.json('emergency_contact.value', text) });
           })
           .then(user => {
             expect(user.username).to.equal('swen');
@@ -184,28 +182,28 @@ if (dialect.match(/^postgres/)) {
       });
     });
 
-    describe('hstore', function () {
-      it('should tell me that a column is hstore and not USER-DEFINED', function () {
+    describe('hstore', () => {
+      it('should tell me that a column is hstore and not USER-DEFINED', function() {
         return this.sequelize.queryInterface.describeTable('Users').then(table => {
           expect(table.settings.type).to.equal('HSTORE');
           expect(table.document.type).to.equal('HSTORE');
         });
       });
 
-      it('should stringify hstore with insert', function () {
+      it('should NOT stringify hstore with insert', function() {
         return this.User.create({
           username: 'bob',
           email: ['myemail@email.com'],
           settings: { mailing: false, push: 'facebook', frequency: 3 }
         }, {
           logging(sql) {
-            const expected = '\'"mailing"=>"false","push"=>"facebook","frequency"=>"3"\',\'"default"=>"\'\'value\'\'"\'';
-            expect(sql.indexOf(expected)).not.to.equal(-1);
+            const unexpected = '\'"mailing"=>"false","push"=>"facebook","frequency"=>"3"\',\'"default"=>"\'\'value\'\'"\'';
+            expect(sql).not.to.include(unexpected);
           }
         });
       });
 
-      it('should not rename hstore fields', function () {
+      it('should not rename hstore fields', function() {
         const Equipment = this.sequelize.define('Equipment', {
           grapplingHook: {
             type: DataTypes.STRING,
@@ -230,7 +228,7 @@ if (dialect.match(/^postgres/)) {
         });
       });
 
-      it('should not rename json fields', function () {
+      it('should not rename json fields', function() {
         const Equipment = this.sequelize.define('Equipment', {
           grapplingHook: {
             type: DataTypes.STRING,
@@ -257,8 +255,8 @@ if (dialect.match(/^postgres/)) {
 
     });
 
-    describe('range', function () {
-      it('should tell me that a column is range and not USER-DEFINED', function () {
+    describe('range', () => {
+      it('should tell me that a column is range and not USER-DEFINED', function() {
         return this.sequelize.queryInterface.describeTable('Users').then(table => {
           expect(table.course_period.type).to.equal('TSTZRANGE');
           expect(table.available_amount.type).to.equal('INT4RANGE');
@@ -267,8 +265,8 @@ if (dialect.match(/^postgres/)) {
 
     });
 
-    describe('enums', function () {
-      it('should be able to ignore enum types that already exist', function () {
+    describe('enums', () => {
+      it('should be able to ignore enum types that already exist', function() {
         const User = this.sequelize.define('UserEnums', {
           mood: DataTypes.ENUM('happy', 'sad', 'meh')
         });
@@ -278,7 +276,7 @@ if (dialect.match(/^postgres/)) {
         });
       });
 
-      it('should be able to create/drop enums multiple times', function () {
+      it('should be able to create/drop enums multiple times', function() {
         const User = this.sequelize.define('UserEnums', {
           mood: DataTypes.ENUM('happy', 'sad', 'meh')
         });
@@ -288,7 +286,7 @@ if (dialect.match(/^postgres/)) {
         });
       });
 
-      it('should be able to create/drop multiple enums multiple times', function () {
+      it('should be able to create/drop multiple enums multiple times', function() {
         const DummyModel = this.sequelize.define('Dummy-pg', {
           username: DataTypes.STRING,
           theEnumOne: {
@@ -318,7 +316,39 @@ if (dialect.match(/^postgres/)) {
         });
       });
 
-      it('should be able to add values to enum types', function () {
+      it('should be able to create/drop multiple enums multiple times with field name (#7812)', function() {
+        const DummyModel = this.sequelize.define('Dummy-pg', {
+          username: DataTypes.STRING,
+          theEnumOne: {
+            field: 'oh_my_this_enum_one',
+            type: DataTypes.ENUM,
+            values: [
+              'one',
+              'two',
+              'three'
+            ]
+          },
+          theEnumTwo: {
+            field: 'oh_my_this_enum_two',
+            type: DataTypes.ENUM,
+            values: [
+              'four',
+              'five',
+              'six'
+            ]
+          }
+        });
+
+        return DummyModel.sync({ force: true }).then(() => {
+          // now sync one more time:
+          return DummyModel.sync({ force: true }).then(() => {
+            // sync without dropping
+            return DummyModel.sync();
+          });
+        });
+      });
+
+      it('should be able to add values to enum types', function() {
         let User = this.sequelize.define('UserEnums', {
           mood: DataTypes.ENUM('happy', 'sad', 'meh')
         });
@@ -333,14 +363,188 @@ if (dialect.match(/^postgres/)) {
           return this.sequelize.getQueryInterface().pgListEnums(User.getTableName());
         }).then(enums => {
           expect(enums).to.have.length(1);
-          expect(enums[0].enum_value).to.equal("{neutral,happy,sad,ecstatic,meh,joyful}");
+          expect(enums[0].enum_value).to.equal('{neutral,happy,sad,ecstatic,meh,joyful}');
+        });
+      });
+
+      it('should be able to add multiple values with different order', function() {
+        let User = this.sequelize.define('UserEnums', {
+          priority: DataTypes.ENUM('1', '2', '6')
+        });
+
+        return User.sync({ force: true }).then(() => {
+          User = this.sequelize.define('UserEnums', {
+            priority: DataTypes.ENUM('0', '1', '2', '3', '4', '5', '6', '7')
+          });
+
+          return User.sync();
+        }).then(() => {
+          return this.sequelize.getQueryInterface().pgListEnums(User.getTableName());
+        }).then(enums => {
+          expect(enums).to.have.length(1);
+          expect(enums[0].enum_value).to.equal('{0,1,2,3,4,5,6,7}');
+        });
+      });
+
+      describe('ARRAY(ENUM)', () => {
+        it('should be able to ignore enum types that already exist', function() {
+          const User = this.sequelize.define('UserEnums', {
+            permissions: DataTypes.ARRAY(DataTypes.ENUM([
+              'access',
+              'write',
+              'check',
+              'delete'
+            ]))
+          });
+
+          return User.sync({ force: true }).then(() => User.sync());
+        });
+
+        it('should be able to create/drop enums multiple times', function() {
+          const User = this.sequelize.define('UserEnums', {
+            permissions: DataTypes.ARRAY(DataTypes.ENUM([
+              'access',
+              'write',
+              'check',
+              'delete'
+            ]))
+          });
+
+          return User.sync({ force: true }).then(() => User.sync({ force: true }));
+        });
+
+        it('should be able to add values to enum types', function() {
+          let User = this.sequelize.define('UserEnums', {
+            permissions: DataTypes.ARRAY(DataTypes.ENUM([
+              'access',
+              'write',
+              'check',
+              'delete'
+            ]))
+          });
+
+          return User.sync({ force: true }).then(() => {
+            User = this.sequelize.define('UserEnums', {
+              permissions: DataTypes.ARRAY(
+                DataTypes.ENUM('view', 'access', 'edit', 'write', 'check', 'delete')
+              )
+            });
+
+            return User.sync();
+          }).then(() => {
+            return this.sequelize.getQueryInterface().pgListEnums(User.getTableName());
+          }).then(enums => {
+            expect(enums).to.have.length(1);
+            expect(enums[0].enum_value).to.equal('{view,access,edit,write,check,delete}');
+          });
+        });
+
+        it('should be able to insert new record', function() {
+          const User = this.sequelize.define('UserEnums', {
+            name: DataTypes.STRING,
+            type: DataTypes.ENUM('A', 'B', 'C'),
+            owners: DataTypes.ARRAY(DataTypes.STRING),
+            permissions: DataTypes.ARRAY(DataTypes.ENUM([
+              'access',
+              'write',
+              'check',
+              'delete'
+            ]))
+          });
+
+          return User.sync({ force: true })
+            .then(() => {
+              return User.create({
+                name: 'file.exe',
+                type: 'C',
+                owners: ['userA', 'userB'],
+                permissions: ['access', 'write']
+              });
+            })
+            .then(user => {
+              expect(user.name).to.equal('file.exe');
+              expect(user.type).to.equal('C');
+              expect(user.owners).to.deep.equal(['userA', 'userB']);
+              expect(user.permissions).to.deep.equal(['access', 'write']);
+            });
+        });
+
+        it('should fail when trying to insert foreign element on ARRAY(ENUM)', function() {
+          const User = this.sequelize.define('UserEnums', {
+            name: DataTypes.STRING,
+            type: DataTypes.ENUM('A', 'B', 'C'),
+            owners: DataTypes.ARRAY(DataTypes.STRING),
+            permissions: DataTypes.ARRAY(DataTypes.ENUM([
+              'access',
+              'write',
+              'check',
+              'delete'
+            ]))
+          });
+
+          return expect(User.sync({ force: true }).then(() => {
+            return User.create({
+              name: 'file.exe',
+              type: 'C',
+              owners: ['userA', 'userB'],
+              permissions: ['cosmic_ray_disk_access']
+            });
+          })).to.be.rejectedWith(/invalid input value for enum "enum_UserEnums_permissions": "cosmic_ray_disk_access"/);
+        });
+
+        it('should be able to find records', function() {
+          const User = this.sequelize.define('UserEnums', {
+            name: DataTypes.STRING,
+            type: DataTypes.ENUM('A', 'B', 'C'),
+            permissions: DataTypes.ARRAY(DataTypes.ENUM([
+              'access',
+              'write',
+              'check',
+              'delete'
+            ]))
+          });
+
+          return User.sync({ force: true })
+            .then(() => {
+              return User.bulkCreate([{
+                name: 'file1.exe',
+                type: 'C',
+                permissions: ['access', 'write']
+              }, {
+                name: 'file2.exe',
+                type: 'A',
+                permissions: ['access', 'check']
+              }, {
+                name: 'file3.exe',
+                type: 'B',
+                permissions: ['access', 'write', 'delete']
+              }]);
+            })
+            .then(() => {
+              return User.findAll({
+                where: {
+                  type: {
+                    [Op.in]: ['A', 'C']
+                  },
+                  permissions: {
+                    [Op.contains]: ['write']
+                  }
+                }
+              });
+            })
+            .then(users => {
+              expect(users.length).to.equal(1);
+              expect(users[0].name).to.equal('file1.exe');
+              expect(users[0].type).to.equal('C');
+              expect(users[0].permissions).to.deep.equal(['access', 'write']);
+            });
         });
       });
     });
 
-    describe('integers', function () {
-      describe('integer', function () {
-        beforeEach(function () {
+    describe('integers', () => {
+      describe('integer', () => {
+        beforeEach(function() {
           this.User = this.sequelize.define('User', {
             aNumber: DataTypes.INTEGER
           });
@@ -348,31 +552,31 @@ if (dialect.match(/^postgres/)) {
           return this.User.sync({ force: true });
         });
 
-        it('positive', function () {
+        it('positive', function() {
           const User = this.User;
 
           return User.create({ aNumber: 2147483647 }).then(user => {
             expect(user.aNumber).to.equal(2147483647);
-            return User.find({ where: { aNumber: 2147483647 } }).then(_user => {
+            return User.findOne({ where: { aNumber: 2147483647 } }).then(_user => {
               expect(_user.aNumber).to.equal(2147483647);
             });
           });
         });
 
-        it('negative', function () {
+        it('negative', function() {
           const User = this.User;
 
           return User.create({ aNumber: -2147483647 }).then(user => {
             expect(user.aNumber).to.equal(-2147483647);
-            return User.find({ where: { aNumber: -2147483647 } }).then(_user => {
+            return User.findOne({ where: { aNumber: -2147483647 } }).then(_user => {
               expect(_user.aNumber).to.equal(-2147483647);
             });
           });
         });
       });
 
-      describe('bigint', function () {
-        beforeEach(function () {
+      describe('bigint', () => {
+        beforeEach(function() {
           this.User = this.sequelize.define('User', {
             aNumber: DataTypes.BIGINT
           });
@@ -380,23 +584,23 @@ if (dialect.match(/^postgres/)) {
           return this.User.sync({ force: true });
         });
 
-        it('positive', function () {
+        it('positive', function() {
           const User = this.User;
 
           return User.create({ aNumber: '9223372036854775807' }).then(user => {
             expect(user.aNumber).to.equal('9223372036854775807');
-            return User.find({ where: { aNumber: '9223372036854775807' } }).then(_user => {
+            return User.findOne({ where: { aNumber: '9223372036854775807' } }).then(_user => {
               expect(_user.aNumber).to.equal('9223372036854775807');
             });
           });
         });
 
-        it('negative', function () {
+        it('negative', function() {
           const User = this.User;
 
           return User.create({ aNumber: '-9223372036854775807' }).then(user => {
             expect(user.aNumber).to.equal('-9223372036854775807');
-            return User.find({ where: { aNumber: '-9223372036854775807' } }).then(_user => {
+            return User.findOne({ where: { aNumber: '-9223372036854775807' } }).then(_user => {
               expect(_user.aNumber).to.equal('-9223372036854775807');
             });
           });
@@ -404,27 +608,28 @@ if (dialect.match(/^postgres/)) {
       });
     });
 
-    describe('timestamps', function () {
-      beforeEach(function () {
+    describe('timestamps', () => {
+      beforeEach(function() {
         this.User = this.sequelize.define('User', {
           dates: DataTypes.ARRAY(DataTypes.DATE)
         });
         return this.User.sync({ force: true });
       });
 
-      it('should use postgres "TIMESTAMP WITH TIME ZONE" instead of "DATETIME"', function () {
+      it('should use bind params instead of "TIMESTAMP WITH TIME ZONE"', function() {
         return this.User.create({
           dates: []
         }, {
-            logging: function (sql) {
-              expect(sql.indexOf('TIMESTAMP WITH TIME ZONE')).to.be.greaterThan(0);
-            }
-          });
+          logging(sql) {
+            expect(sql).not.to.contain('TIMESTAMP WITH TIME ZONE');
+            expect(sql).not.to.contain('DATETIME');
+          }
+        });
       });
     });
 
-    describe('model', function () {
-      it('create handles array correctly', function () {
+    describe('model', () => {
+      it('create handles array correctly', function() {
         return this.User
           .create({ username: 'user', email: ['foo@bar.com', 'bar@baz.com'] })
           .then(oldUser => {
@@ -432,21 +637,21 @@ if (dialect.match(/^postgres/)) {
           });
       });
 
-      it('should save hstore correctly', function () {
+      it('should save hstore correctly', function() {
         return this.User.create({ username: 'user', email: ['foo@bar.com'], settings: { created: '"value"' } }).then(newUser => {
           // Check to see if the default value for an hstore field works
           expect(newUser.document).to.deep.equal({ default: "'value'" });
           expect(newUser.settings).to.deep.equal({ created: '"value"' });
 
           // Check to see if updating an hstore field works
-          return newUser.updateAttributes({ settings: { should: 'update', to: 'this', first: 'place' } }).then(oldUser => {
+          return newUser.update({ settings: { should: 'update', to: 'this', first: 'place' } }).then(oldUser => {
             // Postgres always returns keys in alphabetical order (ascending)
             expect(oldUser.settings).to.deep.equal({ first: 'place', should: 'update', to: 'this' });
           });
         });
       });
 
-      it('should save hstore array correctly', function () {
+      it('should save hstore array correctly', function() {
         const User = this.User;
 
         return this.User.create({
@@ -454,7 +659,7 @@ if (dialect.match(/^postgres/)) {
           email: ['myemail@email.com'],
           phones: [{ number: '123456789', type: 'mobile' }, { number: '987654321', type: 'landline' }, { number: '8675309', type: "Jenny's" }, { number: '5555554321', type: '"home\n"' }]
         }).then(() => {
-          return User.findById(1).then(user => {
+          return User.findByPk(1).then(user => {
             expect(user.phones.length).to.equal(4);
             expect(user.phones[1].number).to.equal('987654321');
             expect(user.phones[2].type).to.equal("Jenny's");
@@ -463,7 +668,7 @@ if (dialect.match(/^postgres/)) {
         });
       });
 
-      it('should bulkCreate with hstore property', function () {
+      it('should bulkCreate with hstore property', function() {
         const User = this.User;
 
         return this.User.bulkCreate([{
@@ -471,13 +676,13 @@ if (dialect.match(/^postgres/)) {
           email: ['myemail@email.com'],
           settings: { mailing: true, push: 'facebook', frequency: 3 }
         }]).then(() => {
-          return User.findById(1).then(user => {
+          return User.findByPk(1).then(user => {
             expect(user.settings.mailing).to.equal('true');
           });
         });
       });
 
-      it('should update hstore correctly', function () {
+      it('should update hstore correctly', function() {
         return this.User.create({ username: 'user', email: ['foo@bar.com'], settings: { test: '"value"' } }).then(newUser => {
           // Check to see if the default value for an hstore field works
           expect(newUser.document).to.deep.equal({ default: "'value'" });
@@ -493,22 +698,22 @@ if (dialect.match(/^postgres/)) {
         });
       });
 
-      it('should update hstore correctly and return the affected rows', function () {
+      it('should update hstore correctly and return the affected rows', function() {
         return this.User.create({ username: 'user', email: ['foo@bar.com'], settings: { test: '"value"' } }).then(oldUser => {
           // Update the user and check that the returned object's fields have been parsed by the hstore library
-          return this.User.update({ settings: { should: 'update', to: 'this', first: 'place' } }, { where: oldUser.where(), returning: true }).spread(function (count, users) {
+          return this.User.update({ settings: { should: 'update', to: 'this', first: 'place' } }, { where: oldUser.where(), returning: true }).then(([count, users]) => {
             expect(count).to.equal(1);
             expect(users[0].settings).to.deep.equal({ should: 'update', to: 'this', first: 'place' });
           });
         });
       });
 
-      it('should read hstore correctly', function () {
+      it('should read hstore correctly', function() {
         const data = { username: 'user', email: ['foo@bar.com'], settings: { test: '"value"' } };
 
         return this.User.create(data)
           .then(() => {
-            return this.User.find({ where: { username: 'user' } });
+            return this.User.findOne({ where: { username: 'user' } });
           })
           .then(user => {
             // Check that the hstore fields are the same when retrieving the user
@@ -516,19 +721,19 @@ if (dialect.match(/^postgres/)) {
           });
       });
 
-      it('should read an hstore array correctly', function () {
+      it('should read an hstore array correctly', function() {
         const data = { username: 'user', email: ['foo@bar.com'], phones: [{ number: '123456789', type: 'mobile' }, { number: '987654321', type: 'landline' }] };
 
         return this.User.create(data)
           .then(() => {
             // Check that the hstore fields are the same when retrieving the user
-            return this.User.find({ where: { username: 'user' } });
+            return this.User.findOne({ where: { username: 'user' } });
           }).then(user => {
             expect(user.phones).to.deep.equal(data.phones);
           });
       });
 
-      it('should read hstore correctly from multiple rows', function () {
+      it('should read hstore correctly from multiple rows', function() {
         return this.User
           .create({ username: 'user1', email: ['foo@bar.com'], settings: { test: '"value"' } })
           .then(() => {
@@ -544,7 +749,7 @@ if (dialect.match(/^postgres/)) {
           });
       });
 
-      it('should read hstore correctly from included models as well', function () {
+      it('should read hstore correctly from included models as well', function() {
         const HstoreSubmodel = this.sequelize.define('hstoreSubmodel', {
           someValue: DataTypes.HSTORE
         });
@@ -564,7 +769,7 @@ if (dialect.match(/^postgres/)) {
               });
           })
           .then(() => {
-            return this.User.find({ where: { username: 'user1' }, include: [HstoreSubmodel] });
+            return this.User.findOne({ where: { username: 'user1' }, include: [HstoreSubmodel] });
           })
           .then(user => {
             expect(user.hasOwnProperty('hstoreSubmodels')).to.be.ok;
@@ -573,31 +778,35 @@ if (dialect.match(/^postgres/)) {
           });
       });
 
-      it('should save range correctly', function () {
+      it('should save range correctly', function() {
         const period = [new Date(2015, 0, 1), new Date(2015, 11, 31)];
         return this.User.create({ username: 'user', email: ['foo@bar.com'], course_period: period }).then(newUser => {
           // Check to see if the default value for a range field works
 
           expect(newUser.acceptable_marks.length).to.equal(2);
-          expect(newUser.acceptable_marks[0]).to.equal('0.65'); // lower bound
-          expect(newUser.acceptable_marks[1]).to.equal('1'); // upper bound
-          expect(newUser.acceptable_marks.inclusive).to.deep.equal([true, false]); // inclusive, exclusive
-          expect(newUser.course_period[0] instanceof Date).to.be.ok; // lower bound
-          expect(newUser.course_period[1] instanceof Date).to.be.ok; // upper bound
-          expect(newUser.course_period[0]).to.equalTime(period[0]); // lower bound
-          expect(newUser.course_period[1]).to.equalTime(period[1]); // upper bound
-          expect(newUser.course_period.inclusive).to.deep.equal([true, false]); // inclusive, exclusive
+          expect(newUser.acceptable_marks[0].value).to.equal('0.65'); // lower bound
+          expect(newUser.acceptable_marks[1].value).to.equal('1'); // upper bound
+          expect(newUser.acceptable_marks[0].inclusive).to.deep.equal(true); // inclusive
+          expect(newUser.acceptable_marks[1].inclusive).to.deep.equal(false); // exclusive
+          expect(newUser.course_period[0].value instanceof Date).to.be.ok; // lower bound
+          expect(newUser.course_period[1].value instanceof Date).to.be.ok; // upper bound
+          expect(newUser.course_period[0].value).to.equalTime(period[0]); // lower bound
+          expect(newUser.course_period[1].value).to.equalTime(period[1]); // upper bound
+          expect(newUser.course_period[0].inclusive).to.deep.equal(true); // inclusive
+          expect(newUser.course_period[1].inclusive).to.deep.equal(false); // exclusive
 
           // Check to see if updating a range field works
-          return newUser.updateAttributes({ acceptable_marks: [0.8, 0.9] }).then(() => {
-            expect(newUser.acceptable_marks.length).to.equal(2);
-            expect(newUser.acceptable_marks[0]).to.equal(0.8); // lower bound
-            expect(newUser.acceptable_marks[1]).to.equal(0.9); // upper bound
-          });
+          return newUser.update({ acceptable_marks: [0.8, 0.9] })
+            .then(() => newUser.reload()) // Ensure the acceptable_marks array is loaded with the complete range definition
+            .then(() => {
+              expect(newUser.acceptable_marks.length).to.equal(2);
+              expect(newUser.acceptable_marks[0].value).to.equal('0.8'); // lower bound
+              expect(newUser.acceptable_marks[1].value).to.equal('0.9'); // upper bound
+            });
         });
       });
 
-      it('should save range array correctly', function () {
+      it('should save range array correctly', function() {
         const User = this.User;
         const holidays = [
           [new Date(2015, 3, 1), new Date(2015, 3, 15)],
@@ -607,25 +816,25 @@ if (dialect.match(/^postgres/)) {
         return User.create({
           username: 'bob',
           email: ['myemail@email.com'],
-          holidays: holidays
+          holidays
         }).then(() => {
-          return User.findById(1).then(user => {
+          return User.findByPk(1).then(user => {
             expect(user.holidays.length).to.equal(2);
             expect(user.holidays[0].length).to.equal(2);
-            expect(user.holidays[0][0] instanceof Date).to.be.ok;
-            expect(user.holidays[0][1] instanceof Date).to.be.ok;
-            expect(user.holidays[0][0]).to.equalTime(holidays[0][0]);
-            expect(user.holidays[0][1]).to.equalTime(holidays[0][1]);
+            expect(user.holidays[0][0].value instanceof Date).to.be.ok;
+            expect(user.holidays[0][1].value instanceof Date).to.be.ok;
+            expect(user.holidays[0][0].value).to.equalTime(holidays[0][0]);
+            expect(user.holidays[0][1].value).to.equalTime(holidays[0][1]);
             expect(user.holidays[1].length).to.equal(2);
-            expect(user.holidays[1][0] instanceof Date).to.be.ok;
-            expect(user.holidays[1][1] instanceof Date).to.be.ok;
-            expect(user.holidays[1][0]).to.equalTime(holidays[1][0]);
-            expect(user.holidays[1][1]).to.equalTime(holidays[1][1]);
+            expect(user.holidays[1][0].value instanceof Date).to.be.ok;
+            expect(user.holidays[1][1].value instanceof Date).to.be.ok;
+            expect(user.holidays[1][0].value).to.equalTime(holidays[1][0]);
+            expect(user.holidays[1][1].value).to.equalTime(holidays[1][1]);
           });
         });
       });
 
-      it('should bulkCreate with range property', function () {
+      it('should bulkCreate with range property', function() {
         const User = this.User;
         const period = [new Date(2015, 0, 1), new Date(2015, 11, 31)];
 
@@ -634,48 +843,53 @@ if (dialect.match(/^postgres/)) {
           email: ['myemail@email.com'],
           course_period: period
         }]).then(() => {
-          return User.findById(1).then(user => {
-            expect(user.course_period[0] instanceof Date).to.be.ok;
-            expect(user.course_period[1] instanceof Date).to.be.ok;
-            expect(user.course_period[0]).to.equalTime(period[0]); // lower bound
-            expect(user.course_period[1]).to.equalTime(period[1]); // upper bound
-            expect(user.course_period.inclusive).to.deep.equal([true, false]); // inclusive, exclusive
+          return User.findByPk(1).then(user => {
+            expect(user.course_period[0].value instanceof Date).to.be.ok;
+            expect(user.course_period[1].value instanceof Date).to.be.ok;
+            expect(user.course_period[0].value).to.equalTime(period[0]);  // lower bound
+            expect(user.course_period[1].value).to.equalTime(period[1]);  // upper bound
+            expect(user.course_period[0].inclusive).to.deep.equal(true);  // inclusive
+            expect(user.course_period[1].inclusive).to.deep.equal(false); // exclusive
           });
         });
       });
 
-      it('should update range correctly', function () {
+      it('should update range correctly', function() {
         const User = this.User;
         const period = [new Date(2015, 0, 1), new Date(2015, 11, 31)];
 
         return User.create({ username: 'user', email: ['foo@bar.com'], course_period: period }).then(newUser => {
           // Check to see if the default value for a range field works
           expect(newUser.acceptable_marks.length).to.equal(2);
-          expect(newUser.acceptable_marks[0]).to.equal('0.65'); // lower bound
-          expect(newUser.acceptable_marks[1]).to.equal('1'); // upper bound
-          expect(newUser.acceptable_marks.inclusive).to.deep.equal([true, false]); // inclusive, exclusive
-          expect(newUser.course_period[0] instanceof Date).to.be.ok;
-          expect(newUser.course_period[1] instanceof Date).to.be.ok;
-          expect(newUser.course_period[0]).to.equalTime(period[0]); // lower bound
-          expect(newUser.course_period[1]).to.equalTime(period[1]); // upper bound
-          expect(newUser.course_period.inclusive).to.deep.equal([true, false]); // inclusive, exclusive
+          expect(newUser.acceptable_marks[0].value).to.equal('0.65'); // lower bound
+          expect(newUser.acceptable_marks[1].value).to.equal('1'); // upper bound
+          expect(newUser.acceptable_marks[0].inclusive).to.deep.equal(true); // inclusive
+          expect(newUser.acceptable_marks[1].inclusive).to.deep.equal(false); // exclusive
+          expect(newUser.course_period[0].value instanceof Date).to.be.ok;
+          expect(newUser.course_period[1].value instanceof Date).to.be.ok;
+          expect(newUser.course_period[0].value).to.equalTime(period[0]); // lower bound
+          expect(newUser.course_period[1].value).to.equalTime(period[1]); // upper bound
+          expect(newUser.course_period[0].inclusive).to.deep.equal(true);  // inclusive
+          expect(newUser.course_period[1].inclusive).to.deep.equal(false); // exclusive
+
 
           const period2 = [new Date(2015, 1, 1), new Date(2015, 10, 30)];
 
           // Check to see if updating a range field works
           return User.update({ course_period: period2 }, { where: newUser.where() }).then(() => {
             return newUser.reload().then(() => {
-              expect(newUser.course_period[0] instanceof Date).to.be.ok;
-              expect(newUser.course_period[1] instanceof Date).to.be.ok;
-              expect(newUser.course_period[0]).to.equalTime(period2[0]); // lower bound
-              expect(newUser.course_period[1]).to.equalTime(period2[1]); // upper bound
-              expect(newUser.course_period.inclusive).to.deep.equal([true, false]); // inclusive, exclusive
+              expect(newUser.course_period[0].value instanceof Date).to.be.ok;
+              expect(newUser.course_period[1].value instanceof Date).to.be.ok;
+              expect(newUser.course_period[0].value).to.equalTime(period2[0]); // lower bound
+              expect(newUser.course_period[1].value).to.equalTime(period2[1]); // upper bound
+              expect(newUser.course_period[0].inclusive).to.deep.equal(true);  // inclusive
+              expect(newUser.course_period[1].inclusive).to.deep.equal(false); // exclusive
             });
           });
         });
       });
 
-      it('should update range correctly and return the affected rows', function () {
+      it('should update range correctly and return the affected rows', function() {
         const User = this.User;
         const period = [new Date(2015, 1, 1), new Date(2015, 10, 30)];
 
@@ -686,28 +900,28 @@ if (dialect.match(/^postgres/)) {
         }).then(oldUser => {
           // Update the user and check that the returned object's fields have been parsed by the range parser
           return User.update({ course_period: period }, { where: oldUser.where(), returning: true })
-            .spread(function (count, users) {
+            .then(([count, users]) => {
               expect(count).to.equal(1);
-              expect(users[0].course_period[0] instanceof Date).to.be.ok;
-              expect(users[0].course_period[1] instanceof Date).to.be.ok;
-              expect(users[0].course_period[0]).to.equalTime(period[0]); // lower bound
-              expect(users[0].course_period[1]).to.equalTime(period[1]); // upper bound
-              expect(users[0].course_period.inclusive).to.deep.equal([true, false]); // inclusive, exclusive
+              expect(users[0].course_period[0].value instanceof Date).to.be.ok;
+              expect(users[0].course_period[1].value instanceof Date).to.be.ok;
+              expect(users[0].course_period[0].value).to.equalTime(period[0]); // lower bound
+              expect(users[0].course_period[1].value).to.equalTime(period[1]); // upper bound
+              expect(users[0].course_period[0].inclusive).to.deep.equal(true);  // inclusive
+              expect(users[0].course_period[1].inclusive).to.deep.equal(false); // exclusive
             });
         });
       });
 
-      it('should read range correctly', function () {
+      it('should read range correctly', function() {
         const User = this.User;
 
-        const course_period = [new Date(2015, 1, 1), new Date(2015, 10, 30)];
-        course_period.inclusive = [false, false];
+        const course_period = [{ value: new Date(2015, 1, 1), inclusive: false }, { value: new Date(2015, 10, 30), inclusive: false }];
 
-        const data = { username: 'user', email: ['foo@bar.com'], course_period: course_period };
+        const data = { username: 'user', email: ['foo@bar.com'], course_period };
 
         return User.create(data)
           .then(() => {
-            return User.find({ where: { username: 'user' } });
+            return User.findOne({ where: { username: 'user' } });
           })
           .then(user => {
             // Check that the range fields are the same when retrieving the user
@@ -715,28 +929,24 @@ if (dialect.match(/^postgres/)) {
           });
       });
 
-      it('should read range array correctly', function () {
+      it('should read range array correctly', function() {
         const User = this.User;
         const holidays = [
-          [new Date(2015, 3, 1, 10), new Date(2015, 3, 15)],
-          [new Date(2015, 8, 1), new Date(2015, 9, 15)]
+          [{ value: new Date(2015, 3, 1, 10), inclusive: true }, { value: new Date(2015, 3, 15), inclusive: true }],
+          [{ value: new Date(2015, 8, 1), inclusive: true }, { value: new Date(2015, 9, 15), inclusive: true }]
         ];
-
-        holidays[0].inclusive = [true, true];
-        holidays[1].inclusive = [true, true];
-
-        const data = { username: 'user', email: ['foo@bar.com'], holidays: holidays };
+        const data = { username: 'user', email: ['foo@bar.com'], holidays };
 
         return User.create(data)
           .then(() => {
             // Check that the range fields are the same when retrieving the user
-            return User.find({ where: { username: 'user' } });
+            return User.findOne({ where: { username: 'user' } });
           }).then(user => {
             expect(user.holidays).to.deep.equal(data.holidays);
           });
       });
 
-      it('should read range correctly from multiple rows', function () {
+      it('should read range correctly from multiple rows', function() {
         const User = this.User;
         const periods = [
           [new Date(2015, 0, 1), new Date(2015, 11, 31)],
@@ -753,16 +963,18 @@ if (dialect.match(/^postgres/)) {
             return User.findAll({ order: ['username'] });
           })
           .then(users => {
-            expect(users[0].course_period[0]).to.equalTime(periods[0][0]); // lower bound
-            expect(users[0].course_period[1]).to.equalTime(periods[0][1]); // upper bound
-            expect(users[0].course_period.inclusive).to.deep.equal([true, false]); // inclusive, exclusive
-            expect(users[1].course_period[0]).to.equalTime(periods[1][0]); // lower bound
-            expect(users[1].course_period[1]).to.equalTime(periods[1][1]); // upper bound
-            expect(users[1].course_period.inclusive).to.deep.equal([true, false]); // inclusive, exclusive
+            expect(users[0].course_period[0].value).to.equalTime(periods[0][0]); // lower bound
+            expect(users[0].course_period[1].value).to.equalTime(periods[0][1]); // upper bound
+            expect(users[0].course_period[0].inclusive).to.deep.equal(true); // inclusive
+            expect(users[0].course_period[1].inclusive).to.deep.equal(false); // exclusive
+            expect(users[1].course_period[0].value).to.equalTime(periods[1][0]); // lower bound
+            expect(users[1].course_period[1].value).to.equalTime(periods[1][1]); // upper bound
+            expect(users[1].course_period[0].inclusive).to.deep.equal(true); // inclusive
+            expect(users[1].course_period[1].inclusive).to.deep.equal(false); // exclusive
           });
       });
 
-      it('should read range correctly from included models as well', function () {
+      it('should read range correctly from included models as well', function() {
         const period = [new Date(2016, 0, 1), new Date(2016, 11, 31)];
         const HolidayDate = this.sequelize.define('holidayDate', {
           period: DataTypes.RANGE(DataTypes.DATE)
@@ -776,56 +988,56 @@ if (dialect.match(/^postgres/)) {
             return this.User
               .create({ username: 'user', email: ['foo@bar.com'] })
               .then(user => {
-                return HolidayDate.create({ period: period })
+                return HolidayDate.create({ period })
                   .then(holidayDate => {
                     return user.setHolidayDates([holidayDate]);
                   });
               });
           })
           .then(() => {
-            return this.User.find({ where: { username: 'user' }, include: [HolidayDate] });
+            return this.User.findOne({ where: { username: 'user' }, include: [HolidayDate] });
           })
           .then(user => {
             expect(user.hasOwnProperty('holidayDates')).to.be.ok;
             expect(user.holidayDates.length).to.equal(1);
             expect(user.holidayDates[0].period.length).to.equal(2);
-            expect(user.holidayDates[0].period[0]).to.equalTime(period[0]);
-            expect(user.holidayDates[0].period[1]).to.equalTime(period[1]);
+            expect(user.holidayDates[0].period[0].value).to.equalTime(period[0]);
+            expect(user.holidayDates[0].period[1].value).to.equalTime(period[1]);
           });
       });
     });
 
-    it('should save geometry correctly', function () {
+    it('should save geometry correctly', function() {
       const point = { type: 'Point', coordinates: [39.807222, -76.984722] };
       return this.User.create({ username: 'user', email: ['foo@bar.com'], location: point }).then(newUser => {
         expect(newUser.location).to.deep.eql(point);
       });
     });
 
-    it('should update geometry correctly', function () {
+    it('should update geometry correctly', function() {
       const User = this.User;
       const point1 = { type: 'Point', coordinates: [39.807222, -76.984722] };
       const point2 = { type: 'Point', coordinates: [39.828333, -77.232222] };
       return User.create({ username: 'user', email: ['foo@bar.com'], location: point1 }).then(oldUser => {
-        return User.update({ location: point2 }, { where: { username: oldUser.username }, returning: true }).spread(function (count, updatedUsers) {
+        return User.update({ location: point2 }, { where: { username: oldUser.username }, returning: true }).then(([, updatedUsers]) => {
           expect(updatedUsers[0].location).to.deep.eql(point2);
         });
       });
     });
 
-    it('should read geometry correctly', function () {
+    it('should read geometry correctly', function() {
       const User = this.User;
       const point = { type: 'Point', coordinates: [39.807222, -76.984722] };
 
       return User.create({ username: 'user', email: ['foo@bar.com'], location: point }).then(user => {
-        return User.find({ where: { username: user.username } });
+        return User.findOne({ where: { username: user.username } });
       }).then(user => {
         expect(user.location).to.deep.eql(point);
       });
     });
 
-    describe('[POSTGRES] Unquoted identifiers', function () {
-      it('can insert and select', function () {
+    describe('[POSTGRES] Unquoted identifiers', () => {
+      it('can insert and select', function() {
         this.sequelize.options.quoteIdentifiers = false;
         this.sequelize.getQueryInterface().QueryGenerator.options.quoteIdentifiers = false;
 
@@ -847,7 +1059,7 @@ if (dialect.match(/^postgres/)) {
               expect(user.fullName).to.equal('John Smith');
 
               // We can query by non-quoted identifiers
-              return this.User.find({
+              return this.User.findOne({
                 where: { fullName: 'John Smith' }
               }).then(user2 => {
                 // We can map values back to non-quoted identifiers
@@ -867,11 +1079,11 @@ if (dialect.match(/^postgres/)) {
                     expect(count).to.equal(1);
                   });
               });
-          });
+            });
         });
       });
 
-      it('can select nested include', function () {
+      it('can select nested include', function() {
         this.sequelize.options.quoteIdentifiers = false;
         this.sequelize.getQueryInterface().QueryGenerator.options.quoteIdentifiers = false;
         this.Professor = this.sequelize.define('Professor', {
@@ -943,38 +1155,38 @@ if (dialect.match(/^postgres/)) {
             return this.Student.bulkCreate([
               {
                 id: 1,
-                fullName: 'Harry Potter',
+                fullName: 'Harry Potter'
               },
               {
                 id: 2,
-                fullName: 'Ron Weasley',
+                fullName: 'Ron Weasley'
               },
               {
                 id: 3,
-                fullName: 'Ginny Weasley',
+                fullName: 'Ginny Weasley'
               },
               {
                 id: 4,
-                fullName: 'Hermione Granger',
+                fullName: 'Hermione Granger'
               }
             ]);
           })
           .then(() => {
             return Promise.all([
-              this.Student.findById(1)
-                .then((Harry) => {
+              this.Student.findByPk(1)
+                .then(Harry => {
                   return Harry.setClasses([1, 2, 3]);
                 }),
-              this.Student.findById(2)
-                .then((Ron) => {
+              this.Student.findByPk(2)
+                .then(Ron => {
                   return Ron.setClasses([1, 2]);
                 }),
-              this.Student.findById(3)
-                .then((Ginny) => {
+              this.Student.findByPk(3)
+                .then(Ginny => {
                   return Ginny.setClasses([2, 3]);
                 }),
-              this.Student.findById(4)
-                .then((Hermione) => {
+              this.Student.findByPk(4)
+                .then(Hermione => {
                   return Hermione.setClasses([1, 2, 3]);
                 })
             ]);
@@ -998,7 +1210,7 @@ if (dialect.match(/^postgres/)) {
               ]
             });
           })
-          .then((professors) => {
+          .then(professors => {
             expect(professors.length).to.eql(2);
             expect(professors[0].fullName).to.eql('Albus Dumbledore');
             expect(professors[0].Classes.length).to.eql(1);
